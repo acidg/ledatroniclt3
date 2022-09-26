@@ -1,0 +1,5 @@
+{
+  "name": "Ledatronic LT3",
+  "render_readme": true,
+  "iot_class": "local_polling"
+}
