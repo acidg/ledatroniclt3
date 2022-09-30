@@ -1,5 +1,5 @@
 {
-  "codeowners": ["@acid_g"],
+  "codeowners": ["fake666", "@acid_g"],
   "config_flow": false,
   "dependencies": [],
   "documentation": "null",
