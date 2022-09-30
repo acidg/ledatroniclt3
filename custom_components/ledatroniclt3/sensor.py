@@ -143,7 +143,7 @@ class LedatronicTemperatureSensor(Entity):
         try:
             self.comm.update();
         except Exception:
-            _LOGGER.error("Failed to get LEDATRONIC LT3 Wifi state.")
+            _LOGGER.error("Failed to get LEDATRONIC LT3 Wifi state.", exc_info=True)
 
 class LedatronicStateSensor(Entity):
     """Representation of the LedaTronic state sensor."""
@@ -166,8 +166,8 @@ class LedatronicStateSensor(Entity):
         """Retrieve latest state."""
         try:
             self.comm.update();
-        except Exception:
-            _LOGGER.error("Failed to get LEDATRONIC LT3 Wifi state.")
+        except Exception as e:
+            _LOGGER.error("Failed to get LEDATRONIC LT3 Wifi state.", exc_info=True)
 
 class LedatronicValveSensor(Entity):
     """Representation of the LedaTronic valve sensor."""
@@ -195,8 +195,8 @@ class LedatronicValveSensor(Entity):
         """Retrieve latest state."""
         try:
             self.comm.update();
-        except Exception:
-            _LOGGER.error("Failed to get LEDATRONIC LT3 Wifi state.")
+        except Exception as e:
+            _LOGGER.error("Failed to get LEDATRONIC LT3 Wifi state.", exc_info=True)
 
     @property
     def device_state_attributes(self):
