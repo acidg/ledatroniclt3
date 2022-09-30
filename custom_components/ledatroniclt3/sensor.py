@@ -143,7 +143,7 @@ class LedatronicTemperatureSensor(Entity):
         try:
             self.comm.update();
         except Exception as e:
-            _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state.")
+            _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state")
 
 class LedatronicStateSensor(Entity):
     """Representation of the LedaTronic state sensor."""
