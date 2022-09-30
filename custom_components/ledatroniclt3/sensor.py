@@ -48,7 +48,7 @@ class LedatronicComm:
         self.current_valve_pos_actual = None;
         self.last_update = None;
 
-    async def async_update(self):
+    def update(self):
         # update at most every 10 seconds
         if self.last_update != None and (datetime.datetime.now() - self.last_update) < datetime.timedelta(seconds=10):
             return;
@@ -107,14 +107,14 @@ class LedatronicComm:
 
             break;
 
-async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info = None):
+def setup_platform(hass: HomeAssistantType, config: ConfigType, add_entities, discovery_info = None):
     """Set up the LEDATRONIC LT3 Wifi sensors."""
     host = config.get(CONF_HOST)
     port = config.get(CONF_PORT)
 
     comm = LedatronicComm(host, port);
 
-    async_add_entities([LedatronicTemperatureSensor(comm), LedatronicStateSensor(comm), LedatronicValveSensor(comm)])
+    add_entities([LedatronicTemperatureSensor(comm), LedatronicStateSensor(comm), LedatronicValveSensor(comm)])
 
 class LedatronicTemperatureSensor(Entity):
     """Representation of the LedaTronic main temperatrure sensor."""
@@ -191,7 +191,7 @@ class LedatronicValveSensor(Entity):
         """Return the unit of measurement of this entity, if any."""
         return '%';
 
-    async def async_update(self):
+    def update(self):
         """Retrieve latest state."""
         try:
             self.comm.update();
