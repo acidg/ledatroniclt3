@@ -107,7 +107,7 @@ class LedatronicComm:
 
             break;
 
-async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities: Callable, discovery_info: Optional[DiscoveryInfoType] = None):
+async def async_setup_platform(hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info = None):
     """Set up the LEDATRONIC LT3 Wifi sensors."""
     host = config.get(CONF_HOST)
     port = config.get(CONF_PORT)
