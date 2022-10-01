@@ -8,6 +8,7 @@ sensors:
       host: 192.168.178.222
 
 """
+from cmath import e
 import logging
 import socket
 import datetime
@@ -23,20 +24,17 @@ from homeassistant.helpers.typing import (
 )
 import homeassistant.helpers.config_validation as cv
 
-from .const import (
-    STATUS_START1,
-    STATUS_START2,
-    STATUS_END1,
-    STATUS_END2,
-    DEFAULT_PORT
-)
+from .const import STATUS_START1, STATUS_START2, STATUS_END1, STATUS_END2, DEFAULT_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-    vol.Required(CONF_HOST): cv.string,
-})
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {
+        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+        vol.Required(CONF_HOST): cv.string,
+    }
+)
+
 
 class LedatronicComm:
     def __init__(self, host, port):
@@ -50,74 +48,87 @@ class LedatronicComm:
 
     def update(self):
         # update at most every 10 seconds
-        if self.last_update != None and (datetime.datetime.now() - self.last_update) < datetime.timedelta(seconds=10):
+        if self.last_update != None and (
+            datetime.datetime.now() - self.last_update
+        ) < datetime.timedelta(seconds=30):
             return
 
         self.last_update = datetime.datetime.now()
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((self.host, self.port))
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.host, self.port))
-
-        while True:
-            byte = s.recv(1)
-            if byte == b'':
-                raise Exception("Interrupted")
-
-            if byte != STATUS_START1:
-                continue
-
-            byte = s.recv(1)
-            if byte == b'':
-                raise Exception("Interrupted")
-
-            if byte != STATUS_START2:
-                continue
-
-            state = bytearray()
-            while len(state) < 18:
-                next = s.recv(18 - len(state))
-                if next == b'':
+            while True:
+                byte = s.recv(1)
+                if byte == b"":
                     raise Exception("Interrupted")
 
-                state += next
+                if byte != STATUS_START1:
+                    continue
 
-            if state[16] != STATUS_END1 or state[17] != STATUS_END2:
-                continue
+                byte = s.recv(1)
+                if byte == b"":
+                    raise Exception("Interrupted")
 
-            temp = int.from_bytes(state[0:2], byteorder='big')
-            self.current_temp = temp
-            self.current_valve_pos_target = state[3]
-            self.current_valve_pos_actual = state[2]
+                if byte != STATUS_START2:
+                    continue
 
-            stateVal = state[4]
-            if stateVal == 0:
-                self.current_state = "Bereit"
-            elif stateVal == 2:
-                self.current_state = "Anheizen"
-            elif stateVal == 3 or stateVal == 4:
-                self.current_state = "Heizbetrieb"
-            elif stateVal == 7 or stateVal == 8:
-                self.current_state = "Grundglut"
-            elif stateVal == 97:
-                self.current_state = "Heizfehler"
-            elif stateVal == 98:
-                self.current_state = "Tür offen"
-            else:
-                self.current_state = "Unbekannter Status: " + str(state)
+                state = bytearray()
+                while len(state) < 18:
+                    next = s.recv(18 - len(state))
+                    if next == b"":
+                        raise Exception("Interrupted")
 
-            break
+                    state += next
 
-def setup_platform(hass: HomeAssistantType, config: ConfigType, add_entities, discovery_info = None):
+                if state[16] != STATUS_END1 or state[17] != STATUS_END2:
+                    continue
+
+                temp = int.from_bytes(state[0:2], byteorder="big")
+                self.current_temp = temp
+                self.current_valve_pos_target = state[3]
+                self.current_valve_pos_actual = state[2]
+
+                stateVal = state[4]
+                if stateVal == 0:
+                    self.current_state = "Bereit"
+                elif stateVal == 2:
+                    self.current_state = "Anheizen"
+                elif stateVal == 3 or stateVal == 4:
+                    self.current_state = "Heizbetrieb"
+                elif stateVal == 7 or stateVal == 8:
+                    self.current_state = "Grundglut"
+                elif stateVal == 97:
+                    self.current_state = "Heizfehler"
+                elif stateVal == 98:
+                    self.current_state = "Tür offen"
+                else:
+                    self.current_state = "Unbekannter Status: " + str(state)
+                break
+        finally:
+            s.close()
+
+
+def setup_platform(
+    hass: HomeAssistantType, config: ConfigType, add_entities, discovery_info=None
+):
     """Set up the LEDATRONIC LT3 Wifi sensors."""
     host = config.get(CONF_HOST)
     port = config.get(CONF_PORT)
 
     comm = LedatronicComm(host, port)
 
-    add_entities([LedatronicTemperatureSensor(comm), LedatronicStateSensor(comm), LedatronicValveSensor(comm)])
+    add_entities(
+        [
+            LedatronicTemperatureSensor(comm),
+            LedatronicStateSensor(comm),
+            LedatronicValveSensor(comm),
+        ]
+    )
+
 
 class LedatronicTemperatureSensor(Entity):
-    """Representation of the LedaTronic main temperatrure sensor."""
+    """Representation of the LedaTronic main temperature sensor."""
 
     def __init__(self, comm):
         """Initialize the sensor."""
@@ -145,6 +156,7 @@ class LedatronicTemperatureSensor(Entity):
         except Exception as e:
             _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state")
 
+
 class LedatronicStateSensor(Entity):
     """Representation of the LedaTronic state sensor."""
 
@@ -169,6 +181,7 @@ class LedatronicStateSensor(Entity):
         except Exception as e:
             _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state.")
 
+
 class LedatronicValveSensor(Entity):
     """Representation of the LedaTronic valve sensor."""
 
@@ -189,7 +202,7 @@ class LedatronicValveSensor(Entity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement of this entity, if any."""
-        return '%'
+        return "%"
 
     def update(self):
         """Retrieve latest state."""
@@ -201,4 +214,4 @@ class LedatronicValveSensor(Entity):
     @property
     def device_state_attributes(self):
         """Show Device Attributes."""
-        return { "Actual Position": self.comm.current_valve_pos_actual }
+        return {"Actual Position": self.comm.current_valve_pos_actual}
