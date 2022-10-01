@@ -240,8 +240,11 @@ class LedatronicPumpSensor(LedatronicSensor):
 
     @property
     def state(self):
-        return self.comm.pump
+        if self.comm.pump:
+             return "on" 
+        else: 
+            return "off"
 
     @property
     def unit_of_measurement(self):
-        return TEMP_CELSIUS
+        return "binary_sensor"
