@@ -1,0 +1,45 @@
+0eff start Ofen
+00
+31 temp (=49°C), Flammentemperatur?
+46 momentane Klappenposition (=70%)
+46 eingestellte Klappenposition (=70%)
+61 Status (= 97 Heizfehler)
+00 ?
+00 ?
+22 ? (=34)
+00 ?
+31 ? nochmal temp? Zweiter Sensor?
+00 
+00
+0a
+00
+00
+0b
+0f
+03
+0dff end
+
+0cff start ?
+
+56
+63
+ca
+00
+72
+00
+83
+0dff end
+
+0cff start Komplettstation
+
+20 (=32)
+15 Temp Speicher unten (=21°C)
+16 Temp Speicher mitte (=22°C)
+18 Temp Speicher oben (=24°C)
+11 Temp Vorlauf (=17°C)
+00 Pumpe
+0dff end
+
+
+0eff0031464661000022003100000a00000b0f030dff0cff5663ca007200830dff0cff2015161812000dff
+0eff0031464661000022003100000a00000b0f030dff0cff5663ca007200830dff0cff2015161811000dff

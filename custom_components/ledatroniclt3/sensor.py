@@ -244,7 +244,3 @@ class LedatronicPumpSensor(LedatronicSensor):
              return "on" 
         else: 
             return "off"
-
-    @property
-    def unit_of_measurement(self):
-        return "binary_sensor"
