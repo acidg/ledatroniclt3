@@ -8,23 +8,21 @@ sensors:
       host: 192.168.178.222
 
 """
-from cmath import e
 import logging
 import socket
 import datetime
 import voluptuous as vol
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import CONF_PORT, CONF_HOST, TEMP_CELSIUS
+from homeassistant.const import CONF_PORT, CONF_HOST, TEMP_CELSIUS, PERCENTAGE
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import (
     ConfigType,
-    DiscoveryInfoType,
     HomeAssistantType,
 )
 import homeassistant.helpers.config_validation as cv
 
-from .const import STATUS_START1, STATUS_START2, STATUS_END1, STATUS_END2, DEFAULT_PORT
+from .const import DEFAULT_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +39,11 @@ class LedatronicComm:
         self.host = host
         self.port = port
         self.current_temp = None
+        self.upper_temp = None
+        self.center_temp = None
+        self.lower_temp = None
+        self.forerun_temp = None
+        self.pump = None
         self.current_state = None
         self.current_valve_pos_target = None
         self.current_valve_pos_actual = None
@@ -58,38 +61,19 @@ class LedatronicComm:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((self.host, self.port))
 
-            while True:
-                byte = s.recv(1)
-                if byte == b"":
-                    raise Exception("Interrupted")
-
-                if byte != STATUS_START1:
+            # Try up to 5 times
+            for x in range(5):
+                content = s.recv(1024)
+                if len(content) != 43:
                     continue
 
-                byte = s.recv(1)
-                if byte == b"":
-                    raise Exception("Interrupted")
+                s.close()
 
-                if byte != STATUS_START2:
-                    continue
+                self.current_temp = int.from_bytes(content[2:4], byteorder="big")
+                self.current_valve_pos_target = content[4]
+                self.current_valve_pos_actual = content[5]
 
-                state = bytearray()
-                while len(state) < 18:
-                    next = s.recv(18 - len(state))
-                    if next == b"":
-                        raise Exception("Interrupted")
-
-                    state += next
-
-                if state[16] != STATUS_END1 or state[17] != STATUS_END2:
-                    continue
-
-                temp = int.from_bytes(state[0:2], byteorder="big")
-                self.current_temp = temp
-                self.current_valve_pos_target = state[3]
-                self.current_valve_pos_actual = state[2]
-
-                stateVal = state[4]
+                stateVal = content[6]
                 if stateVal == 0:
                     self.current_state = "Bereit"
                 elif stateVal == 2:
@@ -103,8 +87,15 @@ class LedatronicComm:
                 elif stateVal == 98:
                     self.current_state = "Tür offen"
                 else:
-                    self.current_state = "Unbekannter Status: " + str(state)
-                break
+                    self.current_state = "Unbekannter Status: " + str(stateVal)
+
+                self.lower_temp = content[36]
+                self.center_temp = content[37]
+                self.upper_temp = content[38]
+                self.forerun_temp = content[39]
+                self.pump = False if content[40] == 0 else True
+
+            _LOGGER.error("Failed to parse data from socket after 5 tries!")
         finally:
             s.close()
 
@@ -123,95 +114,134 @@ def setup_platform(
             LedatronicTemperatureSensor(comm),
             LedatronicStateSensor(comm),
             LedatronicValveSensor(comm),
+            LedatronicUpperTemperatureSensor(comm),
+            LedatronicCenterTemperatureSensor(comm),
+            LedatronicLowerTemperatureSensor(comm),
+            LedatronicForerunTemperatureSensor(comm),
+            LedatronicPumpSensor(comm),
         ]
     )
 
 
-class LedatronicTemperatureSensor(Entity):
-    """Representation of the LedaTronic main temperature sensor."""
-
-    def __init__(self, comm):
+class LedatronicSensor(Entity):
+    def __init__(self, comm, name):
         """Initialize the sensor."""
+        self._name = name
         self.comm = comm
 
     @property
     def name(self):
-        """Return the name of this sensor."""
-        return "ledatronic_temp"
+        return self._name
+
+    def update(self):
+        """Retrieve latest state."""
+        try:
+            self.comm.update()
+        except Exception as exception:
+            _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state: %s" % exception)
+
+
+class LedatronicTemperatureSensor(LedatronicSensor):
+    def __init__(self, comm):
+        super().__init__(comm, "ledatronic_brennraum_temp")
 
     @property
     def state(self):
-        """Return the current state of the entity."""
         return self.comm.current_temp
 
     @property
     def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
         return TEMP_CELSIUS
 
-    async def async_update(self):
-        """Retrieve latest state."""
-        try:
-            self.comm.update()
-        except Exception as e:
-            _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state")
 
-
-class LedatronicStateSensor(Entity):
-    """Representation of the LedaTronic state sensor."""
-
+class LedatronicStateSensor(LedatronicSensor):
     def __init__(self, comm):
-        """Initialize the sensor."""
-        self.comm = comm
-
-    @property
-    def name(self):
-        """Return the name of this sensor."""
-        return "ledatronic_state"
+        super().__init__(comm, "ledatronic_status")
 
     @property
     def state(self):
         """Return the current state of the entity."""
         return self.comm.current_state
 
-    async def async_update(self):
-        """Retrieve latest state."""
-        try:
-            self.comm.update()
-        except Exception as e:
-            _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state.")
 
-
-class LedatronicValveSensor(Entity):
-    """Representation of the LedaTronic valve sensor."""
-
+class LedatronicValveSensor(LedatronicSensor):
     def __init__(self, comm):
-        """Initialize the sensor."""
-        self.comm = comm
-
-    @property
-    def name(self):
-        """Return the name of this sensor."""
-        return "ledatronic_valve"
+        super().__init__(comm, "ledatronic_valve")
 
     @property
     def state(self):
-        """Return the current state of the entity."""
         return self.comm.current_valve_pos_target
 
     @property
     def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return "%"
-
-    def update(self):
-        """Retrieve latest state."""
-        try:
-            self.comm.update()
-        except Exception as e:
-            _LOGGER.exception("Failed to get LEDATRONIC LT3 Wifi state.")
+        return PERCENTAGE
 
     @property
     def device_state_attributes(self):
         """Show Device Attributes."""
         return {"Actual Position": self.comm.current_valve_pos_actual}
+
+
+class LedatronicUpperTemperatureSensor(LedatronicSensor):
+    def __init__(self, comm):
+        super().__init__(comm, "ledatronic_speicher_temp_oben")
+
+    @property
+    def state(self):
+        return self.comm.upper_temp
+
+    @property
+    def unit_of_measurement(self):
+        return TEMP_CELSIUS
+
+
+class LedatronicCenterTemperatureSensor(LedatronicSensor):
+    def __init__(self, comm):
+        super().__init__(comm, "ledatronic_speicher_temp_mitte")
+
+    @property
+    def state(self):
+        return self.comm.center_temp
+
+    @property
+    def unit_of_measurement(self):
+        return TEMP_CELSIUS
+
+
+class LedatronicLowerTemperatureSensor(LedatronicSensor):
+    def __init__(self, comm):
+        super().__init__(comm, "ledatronic_speicher_temp_unten")
+
+    @property
+    def state(self):
+        return self.comm.lower_temp
+
+    @property
+    def unit_of_measurement(self):
+        return TEMP_CELSIUS
+
+
+class LedatronicForerunTemperatureSensor(LedatronicSensor):
+    def __init__(self, comm):
+        super().__init__(comm, "ledatronic_vorlauf_temp")
+
+    @property
+    def state(self):
+        return self.comm.forerun_temp
+
+    @property
+    def unit_of_measurement(self):
+        return TEMP_CELSIUS
+
+
+class LedatronicPumpSensor(LedatronicSensor):
+    def __init__(self, comm):
+        super().__init__(comm, "ledatronic_pumpe")
+
+    @property
+    def state(self):
+        return self.comm.pump
+
+    @property
+    def unit_of_measurement(self):
+        return TEMP_CELSIUS
