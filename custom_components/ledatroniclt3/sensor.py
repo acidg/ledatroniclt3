@@ -14,7 +14,7 @@ import datetime
 import voluptuous as vol
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import CONF_PORT, CONF_HOST, TEMP_CELSIUS, PERCENTAGE
+from homeassistant.const import CONF_PORT, CONF_HOST, UnitOfTemperature, PERCENTAGE
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import (
     ConfigType,
@@ -151,7 +151,7 @@ class LedatronicTemperatureSensor(LedatronicSensor):
 
     @property
     def unit_of_measurement(self):
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
 
 class LedatronicStateSensor(LedatronicSensor):
@@ -192,7 +192,7 @@ class LedatronicUpperTemperatureSensor(LedatronicSensor):
 
     @property
     def unit_of_measurement(self):
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
 
 class LedatronicCenterTemperatureSensor(LedatronicSensor):
@@ -205,7 +205,7 @@ class LedatronicCenterTemperatureSensor(LedatronicSensor):
 
     @property
     def unit_of_measurement(self):
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
 
 class LedatronicLowerTemperatureSensor(LedatronicSensor):
@@ -218,7 +218,7 @@ class LedatronicLowerTemperatureSensor(LedatronicSensor):
 
     @property
     def unit_of_measurement(self):
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
 
 class LedatronicForerunTemperatureSensor(LedatronicSensor):
@@ -231,7 +231,7 @@ class LedatronicForerunTemperatureSensor(LedatronicSensor):
 
     @property
     def unit_of_measurement(self):
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
 
 class LedatronicPumpSensor(LedatronicSensor):
